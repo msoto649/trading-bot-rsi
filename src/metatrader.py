@@ -20,7 +20,7 @@ class MetaTrader5Connection:
         Args:
             account: Número de cuenta
             password: Contraseña de la cuenta
-            server: Servidor (ej: XMGlobal-MT5)
+            server: Servidor (ej: LiteFinance-MT5-Demo)
         """
         self.account = account
         self.password = password
@@ -35,10 +35,12 @@ class MetaTrader5Connection:
             bool: True si la conexión es exitosa, False en caso contrario
         """
         try:
-            logger.info(f"Intentando inicializar MT5...")
-            # Inicializa MT5
+            logger.debug(f"Conectando a MT5 con cuenta: {self.account}, servidor: {self.server}")
+            
+            # Inicializa MT5 (sin shutdown previo)
+            logger.debug("Llamando a mt5.initialize()...")
             init_result = mt5.initialize()
-            logger.info(f"MT5 initialize resultado: {init_result}")
+            logger.debug(f"mt5.initialize() retornó: {init_result}")
             
             if not init_result:
                 logger.error("No se pudo inicializar MT5")
@@ -47,11 +49,11 @@ class MetaTrader5Connection:
             # Pequeña pausa para que MT5 se establezca
             time.sleep(0.5)
 
-            logger.info(f"Intentando login con cuenta: {self.account}, servidor: {self.server}")
+            logger.debug(f"Intentando login con servidor: {self.server}")
             # Intenta login con el servidor especificado
             login_result = mt5.login(self.account, self.password, self.server)
             
-            logger.info(f"MT5 login resultado: {login_result}")
+            logger.debug(f"mt5.login() retornó: {login_result}")
             
             if not login_result:
                 error = mt5.last_error()
@@ -61,7 +63,7 @@ class MetaTrader5Connection:
 
             # Verificar que realmente estamos conectados
             terminal_info = mt5.terminal_info()
-            logger.info(f"Terminal info: {terminal_info}")
+            logger.debug(f"Terminal info: {terminal_info}")
             
             if not terminal_info or not terminal_info.connected:
                 logger.error("Terminal no está conectado después del login")
@@ -80,7 +82,10 @@ class MetaTrader5Connection:
     def disconnect(self):
         """Desconectar de MetaTrader 5"""
         if self.connected:
-            mt5.shutdown()
+            try:
+                mt5.shutdown()
+            except:
+                pass
             self.connected = False
             logger.info("Desconectado de MT5")
 
