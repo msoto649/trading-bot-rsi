@@ -11,5 +11,8 @@
   "stop_loss_pips": 50,
   "take_profit_pips": 100,
   "max_positions": 1,
-  "trading_enabled": false
+  "trading_enabled": false,
+  "risk_per_trade": 2.0,
+  "max_daily_loss": 5.0,
+  "max_position_size": 0.5
 }
