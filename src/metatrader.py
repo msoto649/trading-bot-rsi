@@ -34,13 +34,24 @@ class MetaTrader5Connection:
             bool: True si la conexión es exitosa, False en caso contrario
         """
         try:
+            # Primero intenta shutdown para limpiar cualquier sesión anterior
+            try:
+                mt5.shutdown()
+            except:
+                pass
+            
+            # Luego inicializa
             if not mt5.initialize():
                 logger.error("No se pudo inicializar MT5")
                 return False
 
+            # Intenta login con el servidor especificado
             if not mt5.login(self.account, self.password, self.server):
-                logger.error(f"No se pudo conectar con cuenta {self.account}")
-                return False
+                logger.error(f"No se pudo conectar con cuenta {self.account} en servidor {self.server}")
+                # Si falla con el servidor, intenta sin especificarlo
+                if not mt5.login(self.account, self.password):
+                    logger.error(f"Login fallido incluso sin especificar servidor")
+                    return False
 
             self.connected = True
             logger.info(f"Conectado a MT5 - Cuenta: {self.account}")
