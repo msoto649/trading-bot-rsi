@@ -19,9 +19,14 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
-    # Crear logger
+    # Crear logger raíz
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    
+    # Crear logger específico para TradingBot
     logger = logging.getLogger("TradingBot")
     logger.setLevel(logging.DEBUG)
+    logger.propagate = True
     
     # Formato de log
     formatter = logging.Formatter(
@@ -35,6 +40,7 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+    root_logger.addHandler(file_handler)
     
     # Handler para archivo de errores
     error_file = os.path.join(log_dir, f"errors_{datetime.now().strftime('%Y%m%d')}.log")
@@ -42,12 +48,14 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(formatter)
     logger.addHandler(error_handler)
+    root_logger.addHandler(error_handler)
     
     # Handler para consola
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+    root_logger.addHandler(console_handler)
     
     logger.info("Sistema de logging inicializado")
     
