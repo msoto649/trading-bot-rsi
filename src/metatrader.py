@@ -35,16 +35,23 @@ class MetaTrader5Connection:
             bool: True si la conexión es exitosa, False en caso contrario
         """
         try:
+            logger.info(f"Intentando inicializar MT5...")
             # Inicializa MT5
-            if not mt5.initialize():
+            init_result = mt5.initialize()
+            logger.info(f"MT5 initialize resultado: {init_result}")
+            
+            if not init_result:
                 logger.error("No se pudo inicializar MT5")
                 return False
 
             # Pequeña pausa para que MT5 se establezca
             time.sleep(0.5)
 
+            logger.info(f"Intentando login con cuenta: {self.account}, servidor: {self.server}")
             # Intenta login con el servidor especificado
             login_result = mt5.login(self.account, self.password, self.server)
+            
+            logger.info(f"MT5 login resultado: {login_result}")
             
             if not login_result:
                 error = mt5.last_error()
@@ -52,12 +59,22 @@ class MetaTrader5Connection:
                 logger.error(f"Error detallado: {error}")
                 return False
 
+            # Verificar que realmente estamos conectados
+            terminal_info = mt5.terminal_info()
+            logger.info(f"Terminal info: {terminal_info}")
+            
+            if not terminal_info or not terminal_info.connected:
+                logger.error("Terminal no está conectado después del login")
+                return False
+
             self.connected = True
-            logger.info(f"Conectado a MT5 - Cuenta: {self.account}")
+            logger.info(f"✅ Conectado a MT5 - Cuenta: {self.account}")
             return True
 
         except Exception as e:
             logger.error(f"Error al conectar a MT5: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     def disconnect(self):
