@@ -35,11 +35,13 @@ class TradingBot:
         self.trades_today = 0
         
         # Inicializar componentes
+        logger.debug(f"Creando MetaTrader5Connection con cuenta: {self.config['account_number']}")
         self.mt5 = MetaTrader5Connection(
             self.config["account_number"],
             self.config["password"],
             self.config["server"]
         )
+        logger.debug("MetaTrader5Connection creado")
         
         self.strategy = RSIStrategy(
             period=self.config["rsi_period"],
@@ -96,60 +98,75 @@ class TradingBot:
         logger.info("INICIALIZANDO BOT DE TRADING RSI")
         logger.info("=" * 50)
         
-        if not self.mt5.connect():
-            logger.error("No se pudo conectar a MetaTrader 5")
+        try:
+            logger.debug("Llamando a mt5.connect()...")
+            connect_result = self.mt5.connect()
+            logger.debug(f"mt5.connect() retornó: {connect_result}")
+            
+            if not connect_result:
+                logger.error("No se pudo conectar a MetaTrader 5")
+                return False
+            
+            # Obtener información de cuenta
+            logger.debug("Obteniendo información de cuenta...")
+            account_info = self.mt5.get_account_info()
+            logger.debug(f"Account info: {account_info}")
+            
+            if not account_info:
+                logger.error("No se pudo obtener información de la cuenta")
+                return False
+            
+            initial_balance = account_info.get('balance', 0)
+            
+            if initial_balance <= 0:
+                logger.error("Balance inválido o cuenta vacía")
+                return False
+            
+            logger.info(f"Balance: ${initial_balance:.2f}")
+            logger.info(f"Equity: ${account_info.get('equity', 'N/A'):.2f}")
+            logger.info(f"Margen libre: ${account_info.get('free_margin', 'N/A'):.2f}")
+            
+            # Inicializar Risk Manager
+            self.risk_manager = RiskManager(
+                account_balance=initial_balance,
+                risk_per_trade=self.config.get("risk_per_trade", 2.0),
+                max_daily_loss=self.config.get("max_daily_loss", 5.0),
+                max_position_size=self.config.get("max_position_size", 0.5)
+            )
+            
+            # Obtener información del símbolo
+            logger.debug(f"Obteniendo información del símbolo {self.config['symbol']}...")
+            symbol_info = self.mt5.get_symbol_info(self.config["symbol"])
+            logger.debug(f"Symbol info: {symbol_info}")
+            
+            if not symbol_info:
+                logger.error(f"No se pudo obtener información del símbolo {self.config['symbol']}")
+                return False
+            
+            logger.info(f"Símbolo: {symbol_info.get('symbol', 'N/A')}")
+            logger.info(f"Bid: {symbol_info.get('bid', 'N/A'):.5f}")
+            logger.info(f"Ask: {symbol_info.get('ask', 'N/A'):.5f}")
+            logger.info(f"Spread: {symbol_info.get('spread', 'N/A')} pips")
+            
+            # Validar parámetros de riesgo
+            if not self.risk_manager.check_risk_parameters(
+                self.config["stop_loss_pips"],
+                self.config["take_profit_pips"]
+            ):
+                logger.warning("⚠️ Parámetros de riesgo inválidos o subóptimos")
+            
+            logger.info(f"Trading habilitado: {self.config['trading_enabled']}")
+            
+            if not self.config["trading_enabled"]:
+                logger.warning("⚠️ MODO DEMO - Trading deshabilitado en config.json")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error en initialize(): {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
-        
-        # Obtener información de cuenta
-        account_info = self.mt5.get_account_info()
-        
-        if not account_info:
-            logger.error("No se pudo obtener información de la cuenta")
-            return False
-        
-        initial_balance = account_info.get('balance', 0)
-        
-        if initial_balance <= 0:
-            logger.error("Balance inválido o cuenta vacía")
-            return False
-        
-        logger.info(f"Balance: ${initial_balance:.2f}")
-        logger.info(f"Equity: ${account_info.get('equity', 'N/A'):.2f}")
-        logger.info(f"Margen libre: ${account_info.get('free_margin', 'N/A'):.2f}")
-        
-        # Inicializar Risk Manager
-        self.risk_manager = RiskManager(
-            account_balance=initial_balance,
-            risk_per_trade=self.config.get("risk_per_trade", 2.0),
-            max_daily_loss=self.config.get("max_daily_loss", 5.0),
-            max_position_size=self.config.get("max_position_size", 0.5)
-        )
-        
-        # Obtener información del símbolo
-        symbol_info = self.mt5.get_symbol_info(self.config["symbol"])
-        
-        if not symbol_info:
-            logger.error(f"No se pudo obtener información del símbolo {self.config['symbol']}")
-            return False
-        
-        logger.info(f"Símbolo: {symbol_info.get('symbol', 'N/A')}")
-        logger.info(f"Bid: {symbol_info.get('bid', 'N/A'):.5f}")
-        logger.info(f"Ask: {symbol_info.get('ask', 'N/A'):.5f}")
-        logger.info(f"Spread: {symbol_info.get('spread', 'N/A')} pips")
-        
-        # Validar parámetros de riesgo
-        if not self.risk_manager.check_risk_parameters(
-            self.config["stop_loss_pips"],
-            self.config["take_profit_pips"]
-        ):
-            logger.warning("⚠️ Parámetros de riesgo inválidos o subóptimos")
-        
-        logger.info(f"Trading habilitado: {self.config['trading_enabled']}")
-        
-        if not self.config["trading_enabled"]:
-            logger.warning("⚠️ MODO DEMO - Trading deshabilitado en config.json")
-        
-        return True
 
     def run_backtest(self, bars: int = 500) -> dict:
         """
