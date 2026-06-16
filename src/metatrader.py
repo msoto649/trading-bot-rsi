@@ -46,12 +46,13 @@ class MetaTrader5Connection:
                 return False
 
             # Intenta login con el servidor especificado
-            if not mt5.login(self.account, self.password, self.server):
+            login_result = mt5.login(self.account, self.password, self.server)
+            
+            if not login_result:
+                error = mt5.last_error()
                 logger.error(f"No se pudo conectar con cuenta {self.account} en servidor {self.server}")
-                # Si falla con el servidor, intenta sin especificarlo
-                if not mt5.login(self.account, self.password):
-                    logger.error(f"Login fallido incluso sin especificar servidor")
-                    return False
+                logger.error(f"Error detallado: {error}")
+                return False
 
             self.connected = True
             logger.info(f"Conectado a MT5 - Cuenta: {self.account}")
