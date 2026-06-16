@@ -32,7 +32,7 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     # Handler para archivo de log general
     log_file = os.path.join(log_dir, f"trading_log_{datetime.now().strftime('%Y%m%d')}.log")
     file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
@@ -45,7 +45,7 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     
     # Handler para consola
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
