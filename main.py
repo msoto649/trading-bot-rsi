@@ -431,7 +431,7 @@ class TradingBot:
 def main():
     """Función principal"""
     logger.info("=" * 50)
-    logger.info("TRADING BOT RSI - XM Global MetaTrader 5")
+    logger.info("TRADING BOT RSI - LiteFinance MetaTrader 5")
     logger.info("=" * 50)
     logger.info("⚠️ DISCLAIMER: Este bot opera con dinero real.")
     logger.info("⚠️ Úsalo bajo tu propio riesgo.")
