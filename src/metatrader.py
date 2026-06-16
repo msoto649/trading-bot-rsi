@@ -20,7 +20,7 @@ class MetaTrader5Connection:
         Args:
             account: Número de cuenta
             password: Contraseña de la cuenta
-            server: Servidor (ej: LiteFinance-MT5-Demo)
+            server: Servidor (ej: LiteFinance-MT5)
         """
         self.account = account
         self.password = password
@@ -37,10 +37,10 @@ class MetaTrader5Connection:
         try:
             logger.debug(f"Conectando a MT5 con cuenta: {self.account}, servidor: {self.server}")
             
-            # Inicializa MT5 (sin shutdown previo)
+            # Inicializa MT5
             logger.debug("Llamando a mt5.initialize()...")
             init_result = mt5.initialize()
-            logger.debug(f"mt5.initialize() retornó: {init_result}")
+            logger.debug(f"mt5.initialize() retorno: {init_result}")
             
             if not init_result:
                 logger.error("No se pudo inicializar MT5")
@@ -50,10 +50,10 @@ class MetaTrader5Connection:
             time.sleep(0.5)
 
             logger.debug(f"Intentando login con servidor: {self.server}")
-            # Intenta login con el servidor especificado
-            login_result = mt5.login(self.account, self.password, self.server)
+            # Intenta login - parámetros nombrados según API de MetaTrader5
+            login_result = mt5.login(login=self.account, password=self.password, server=self.server)
             
-            logger.debug(f"mt5.login() retornó: {login_result}")
+            logger.debug(f"mt5.login() retorno: {login_result}")
             
             if not login_result:
                 error = mt5.last_error()
@@ -66,11 +66,11 @@ class MetaTrader5Connection:
             logger.debug(f"Terminal info: {terminal_info}")
             
             if not terminal_info or not terminal_info.connected:
-                logger.error("Terminal no está conectado después del login")
+                logger.error("Terminal no esta conectado despues del login")
                 return False
 
             self.connected = True
-            logger.info(f"✅ Conectado a MT5 - Cuenta: {self.account}")
+            logger.info(f"Conectado a MT5 - Cuenta: {self.account}")
             return True
 
         except Exception as e:
@@ -91,10 +91,10 @@ class MetaTrader5Connection:
 
     def get_account_info(self) -> dict:
         """
-        Obtener información de la cuenta
+        Obtener informacion de la cuenta
         
         Returns:
-            dict: Información de la cuenta
+            dict: Informacion de la cuenta
         """
         try:
             info = mt5.account_info()
@@ -109,18 +109,18 @@ class MetaTrader5Connection:
                 }
             return {}
         except Exception as e:
-            logger.error(f"Error al obtener información de cuenta: {str(e)}")
+            logger.error(f"Error al obtener informacion de cuenta: {str(e)}")
             return {}
 
     def get_symbol_info(self, symbol: str) -> dict:
         """
-        Obtener información del símbolo
+        Obtener informacion del simbolo
         
         Args:
-            symbol: Símbolo a consultar (ej: AUDUSD_CL)
+            symbol: Simbolo a consultar (ej: AUDUSD_CL)
             
         Returns:
-            dict: Información del símbolo
+            dict: Informacion del simbolo
         """
         try:
             info = mt5.symbol_info(symbol)
@@ -133,10 +133,10 @@ class MetaTrader5Connection:
                     "tick_size": info.trade_tick_size,
                     "contract_size": info.trade_contract_size
                 }
-            logger.warning(f"Símbolo {symbol} no encontrado")
+            logger.warning(f"Simbolo {symbol} no encontrado")
             return {}
         except Exception as e:
-            logger.error(f"Error al obtener información de símbolo: {str(e)}")
+            logger.error(f"Error al obtener informacion de simbolo: {str(e)}")
             return {}
 
     def get_rates(self, symbol: str, timeframe: int, count: int = 100) -> Optional[list]:
@@ -144,7 +144,7 @@ class MetaTrader5Connection:
         Obtener barras de precios
         
         Args:
-            symbol: Símbolo (ej: AUDUSD_CL)
+            symbol: Simbolo (ej: AUDUSD_CL)
             timeframe: Timeframe en minutos (1, 5, 15, 30, 60, etc.)
             count: Cantidad de barras a obtener
             
@@ -206,5 +206,5 @@ class MetaTrader5Connection:
             return []
 
     def is_connected(self) -> bool:
-        """Verificar si está conectado a MT5"""
+        """Verificar si esta conectado a MT5"""
         return self.connected and mt5.terminal_info() is not None
