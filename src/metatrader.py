@@ -5,6 +5,7 @@ import logging
 from typing import Optional, List
 import pytz
 from datetime import datetime, timedelta
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +35,13 @@ class MetaTrader5Connection:
             bool: True si la conexión es exitosa, False en caso contrario
         """
         try:
-            # Primero intenta shutdown para limpiar cualquier sesión anterior
-            try:
-                mt5.shutdown()
-            except:
-                pass
-            
-            # Luego inicializa
+            # Inicializa MT5
             if not mt5.initialize():
                 logger.error("No se pudo inicializar MT5")
                 return False
+
+            # Pequeña pausa para que MT5 se establezca
+            time.sleep(0.5)
 
             # Intenta login con el servidor especificado
             login_result = mt5.login(self.account, self.password, self.server)
@@ -97,7 +95,7 @@ class MetaTrader5Connection:
         Obtener información del símbolo
         
         Args:
-            symbol: Símbolo a consultar (ej: EU50)
+            symbol: Símbolo a consultar (ej: AUDUSD_CL)
             
         Returns:
             dict: Información del símbolo
@@ -124,7 +122,7 @@ class MetaTrader5Connection:
         Obtener barras de precios
         
         Args:
-            symbol: Símbolo (ej: EU50)
+            symbol: Símbolo (ej: AUDUSD_CL)
             timeframe: Timeframe en minutos (1, 5, 15, 30, 60, etc.)
             count: Cantidad de barras a obtener
             
