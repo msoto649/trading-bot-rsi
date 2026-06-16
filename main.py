@@ -102,7 +102,16 @@ class TradingBot:
         
         # Obtener información de cuenta
         account_info = self.mt5.get_account_info()
+        
+        if not account_info:
+            logger.error("No se pudo obtener información de la cuenta")
+            return False
+        
         initial_balance = account_info.get('balance', 0)
+        
+        if initial_balance <= 0:
+            logger.error("Balance inválido o cuenta vacía")
+            return False
         
         logger.info(f"Balance: ${initial_balance:.2f}")
         logger.info(f"Equity: ${account_info.get('equity', 'N/A'):.2f}")
@@ -118,6 +127,11 @@ class TradingBot:
         
         # Obtener información del símbolo
         symbol_info = self.mt5.get_symbol_info(self.config["symbol"])
+        
+        if not symbol_info:
+            logger.error(f"No se pudo obtener información del símbolo {self.config['symbol']}")
+            return False
+        
         logger.info(f"Símbolo: {symbol_info.get('symbol', 'N/A')}")
         logger.info(f"Bid: {symbol_info.get('bid', 'N/A'):.5f}")
         logger.info(f"Ask: {symbol_info.get('ask', 'N/A'):.5f}")
