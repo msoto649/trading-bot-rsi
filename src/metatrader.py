@@ -20,7 +20,7 @@ class MetaTrader5Connection:
         Args:
             account: Número de cuenta
             password: Contraseña de la cuenta
-            server: Servidor (ej: LiteFinance-MT5)
+            server: Servidor (ej: LiteFinance-MT5-Demo)
         """
         self.account = account
         self.password = password
@@ -36,6 +36,15 @@ class MetaTrader5Connection:
         """
         try:
             logger.debug(f"Conectando a MT5 con cuenta: {self.account}, servidor: {self.server}")
+            
+            # Primero hacer shutdown si ya estaba inicializado
+            logger.debug("Haciendo shutdown previo si es necesario...")
+            try:
+                mt5.shutdown()
+            except:
+                pass
+            
+            time.sleep(0.3)
             
             # Inicializa MT5
             logger.debug("Llamando a mt5.initialize()...")
@@ -117,7 +126,7 @@ class MetaTrader5Connection:
         Obtener informacion del simbolo
         
         Args:
-            symbol: Simbolo a consultar (ej: AUDUSD_CL)
+            symbol: Simbolo a consultar (ej: EURUSD)
             
         Returns:
             dict: Informacion del simbolo
@@ -144,7 +153,7 @@ class MetaTrader5Connection:
         Obtener barras de precios
         
         Args:
-            symbol: Simbolo (ej: AUDUSD_CL)
+            symbol: Simbolo (ej: EURUSD)
             timeframe: Timeframe en minutos (1, 5, 15, 30, 60, etc.)
             count: Cantidad de barras a obtener
             
