@@ -1,4 +1,4 @@
-"""Archivo principal - Trading Bot RSI con Backtesting"""
+"""Archivo principal - Trading Bot RSI con Backtesting y Risk Management"""
 
 import json
 import logging
@@ -14,13 +14,14 @@ from src.metatrader import MetaTrader5Connection
 from src.strategy import RSIStrategy
 from src.orders import OrderManager
 from src.backtest_engine import BacktestEngine
+from src.risk_manager import RiskManager
 
 # Inicializar logger
 logger = setup_logger()
 
 
 class TradingBot:
-    """Bot de trading automático con estrategia RSI y backtesting"""
+    """Bot de trading automático con estrategia RSI, backtesting y gestión de riesgo"""
 
     def __init__(self, config_file: str = "config.json"):
         """
@@ -60,6 +61,9 @@ class TradingBot:
             initial_balance=10000  # Balance de prueba para backtest
         )
         
+        # Risk Manager - será inicializado después de conectar con MT5
+        self.risk_manager = None
+        
         logger.info("Bot inicializado correctamente")
 
     def _load_config(self, config_file: str) -> dict:
@@ -83,7 +87,7 @@ class TradingBot:
 
     def initialize(self) -> bool:
         """
-        Inicializar conexión a MetaTrader 5
+        Inicializar conexión a MetaTrader 5 y Risk Manager
         
         Returns:
             bool: True si la inicialización es exitosa
@@ -98,16 +102,33 @@ class TradingBot:
         
         # Obtener información de cuenta
         account_info = self.mt5.get_account_info()
-        logger.info(f"Balance: ${account_info.get('balance', 'N/A')}")
-        logger.info(f"Equity: ${account_info.get('equity', 'N/A')}")
-        logger.info(f"Margen libre: ${account_info.get('free_margin', 'N/A')}")
+        initial_balance = account_info.get('balance', 0)
+        
+        logger.info(f"Balance: ${initial_balance:.2f}")
+        logger.info(f"Equity: ${account_info.get('equity', 'N/A'):.2f}")
+        logger.info(f"Margen libre: ${account_info.get('free_margin', 'N/A'):.2f}")
+        
+        # Inicializar Risk Manager
+        self.risk_manager = RiskManager(
+            account_balance=initial_balance,
+            risk_per_trade=self.config.get("risk_per_trade", 2.0),
+            max_daily_loss=self.config.get("max_daily_loss", 5.0),
+            max_position_size=self.config.get("max_position_size", 0.5)
+        )
         
         # Obtener información del símbolo
         symbol_info = self.mt5.get_symbol_info(self.config["symbol"])
         logger.info(f"Símbolo: {symbol_info.get('symbol', 'N/A')}")
-        logger.info(f"Bid: {symbol_info.get('bid', 'N/A')}")
-        logger.info(f"Ask: {symbol_info.get('ask', 'N/A')}")
-        logger.info(f"Spread: {symbol_info.get('spread', 'N/A')}")
+        logger.info(f"Bid: {symbol_info.get('bid', 'N/A'):.5f}")
+        logger.info(f"Ask: {symbol_info.get('ask', 'N/A'):.5f}")
+        logger.info(f"Spread: {symbol_info.get('spread', 'N/A')} pips")
+        
+        # Validar parámetros de riesgo
+        if not self.risk_manager.check_risk_parameters(
+            self.config["stop_loss_pips"],
+            self.config["take_profit_pips"]
+        ):
+            logger.warning("⚠️ Parámetros de riesgo inválidos o subóptimos")
         
         logger.info(f"Trading habilitado: {self.config['trading_enabled']}")
         
@@ -150,11 +171,18 @@ class TradingBot:
             rsi, signal = self.strategy.analyze(price_array)
             return signal
         
+        # Calcular lot_size dinámico usando Risk Manager
+        dynamic_lot_size = self.risk_manager.calculate_lot_size(
+            self.config["stop_loss_pips"]
+        )
+        
+        logger.info(f"Lot size dinámico calculado: {dynamic_lot_size:.2f}")
+        
         # Ejecutar backtest
         results = self.backtest_engine.backtest(
             prices=prices,
             strategy_func=strategy_func,
-            lot_size=self.config["lot_size"],
+            lot_size=dynamic_lot_size,
             stop_loss_pips=self.config["stop_loss_pips"],
             take_profit_pips=self.config["take_profit_pips"]
         )
@@ -165,12 +193,12 @@ class TradingBot:
         logger.info("=" * 50)
         logger.info(f"Total Trades: {results['total_trades']}")
         logger.info(f"Win Rate: {results['win_rate']}%")
-        logger.info(f"Total Profit: ${results['total_profit']}")
-        logger.info(f"Profit Factor: {results['profit_factor']}")
-        logger.info(f"Max Drawdown: {results['max_drawdown']}%")
-        logger.info(f"Sharpe Ratio: {results['sharpe_ratio']}")
-        logger.info(f"Final Balance: ${results['final_balance']}")
-        logger.info(f"Total Return: {results['total_return']}%")
+        logger.info(f"Total Profit: ${results['total_profit']:.2f}")
+        logger.info(f"Profit Factor: {results['profit_factor']:.2f}")
+        logger.info(f"Max Drawdown: {results['max_drawdown']:.2f}%")
+        logger.info(f"Sharpe Ratio: {results['sharpe_ratio']:.2f}")
+        logger.info(f"Final Balance: ${results['final_balance']:.2f}")
+        logger.info(f"Total Return: {results['total_return']:.2f}%")
         logger.info("=" * 50 + "\n")
         
         # Guardar resultados
@@ -215,7 +243,7 @@ class TradingBot:
 
     def execute_trade(self, signal: str) -> bool:
         """
-        Ejecutar trade basado en señal
+        Ejecutar trade basado en señal con gestión de riesgo
         
         Args:
             signal: 'BUY' o 'SELL'
@@ -227,6 +255,12 @@ class TradingBot:
             return False
         
         try:
+            # Verificar si debe detener trading por límites de riesgo
+            if self.risk_manager.should_stop_trading():
+                logger.error("🛑 Trading detenido por límites de riesgo")
+                self.running = False
+                return False
+            
             # Obtener precio actual
             rates = self.mt5.get_rates(self.config["symbol"], self.config["timeframe"], 1)
             if not rates:
@@ -240,6 +274,23 @@ class TradingBot:
             if len(positions) >= self.config["max_positions"]:
                 logger.warning(f"Máximo de posiciones alcanzado ({self.config['max_positions']})")
                 return False
+            
+            # Calcular lot_size dinámico con Risk Manager
+            account_info = self.mt5.get_account_info()
+            self.risk_manager.update_balance(account_info.get('balance', 0))
+            
+            # Calcular escala de posición basada en ganancias/pérdidas
+            current_profit = account_info.get('profit', 0)
+            scale_factor = self.risk_manager.calculate_position_size_scaling(current_profit)
+            
+            dynamic_lot_size = self.risk_manager.calculate_lot_size(
+                self.config["stop_loss_pips"]
+            ) * scale_factor
+            
+            logger.info(f"Lot size ajustado: {dynamic_lot_size:.2f} (Escala: {scale_factor:.2f}x)")
+            
+            # Actualizar lot_size en order manager
+            self.order_manager.lot_size = dynamic_lot_size
             
             # Enviar orden
             ticket = self.order_manager.send_order(signal, current_price)
@@ -256,7 +307,7 @@ class TradingBot:
             return False
 
     def print_status(self):
-        """Mostrar estado del bot y mercado"""
+        """Mostrar estado del bot y mercado con información de riesgo"""
         try:
             account_info = self.mt5.get_account_info()
             positions = self.order_manager.get_open_positions()
@@ -276,6 +327,9 @@ class TradingBot:
                 for pos in positions:
                     logger.info(f"  - {pos['type']} @ {pos['open_price']:.5f} | "
                               f"P/L: ${pos['profit']:.2f}")
+            
+            # Mostrar estado de riesgo
+            self.risk_manager.print_risk_status()
             
             logger.info("=" * 50 + "\n")
             
