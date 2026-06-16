@@ -2,7 +2,7 @@
 
 import json
 import logging
-import signal
+import signal as signal_module
 import sys
 import time
 import numpy as np
@@ -21,14 +21,14 @@ logger = setup_logger()
 
 
 class TradingBot:
-    """Bot de trading automático con estrategia RSI, backtesting y gestión de riesgo"""
+    """Bot de trading automatico con estrategia RSI, backtesting y gestion de riesgo"""
 
     def __init__(self, config_file: str = "config.json"):
         """
         Inicializar el bot de trading
         
         Args:
-            config_file: Ruta del archivo de configuración
+            config_file: Ruta del archivo de configuracion
         """
         self.config = self._load_config(config_file)
         self.running = False
@@ -63,36 +63,36 @@ class TradingBot:
             initial_balance=10000  # Balance de prueba para backtest
         )
         
-        # Risk Manager - será inicializado después de conectar con MT5
+        # Risk Manager - sera inicializado despues de conectar con MT5
         self.risk_manager = None
         
         logger.info("Bot inicializado correctamente")
 
     def _load_config(self, config_file: str) -> dict:
         """
-        Cargar configuración desde archivo JSON
+        Cargar configuracion desde archivo JSON
         
         Args:
-            config_file: Ruta del archivo de configuración
+            config_file: Ruta del archivo de configuracion
             
         Returns:
-            dict: Configuración del bot
+            dict: Configuracion del bot
         """
         try:
             with open(config_file, 'r') as f:
                 config = json.load(f)
-            logger.info(f"Configuración cargada desde {config_file}")
+            logger.info(f"Configuracion cargada desde {config_file}")
             return config
         except Exception as e:
-            logger.error(f"Error al cargar configuración: {str(e)}")
+            logger.error(f"Error al cargar configuracion: {str(e)}")
             sys.exit(1)
 
     def initialize(self) -> bool:
         """
-        Inicializar conexión a MetaTrader 5 y Risk Manager
+        Inicializar conexion a MetaTrader 5 y Risk Manager
         
         Returns:
-            bool: True si la inicialización es exitosa
+            bool: True si la inicializacion es exitosa
         """
         logger.info("=" * 50)
         logger.info("INICIALIZANDO BOT DE TRADING RSI")
@@ -101,25 +101,25 @@ class TradingBot:
         try:
             logger.debug("Llamando a mt5.connect()...")
             connect_result = self.mt5.connect()
-            logger.debug(f"mt5.connect() retornó: {connect_result}")
+            logger.debug(f"mt5.connect() retorno: {connect_result}")
             
             if not connect_result:
                 logger.error("No se pudo conectar a MetaTrader 5")
                 return False
             
-            # Obtener información de cuenta
-            logger.debug("Obteniendo información de cuenta...")
+            # Obtener informacion de cuenta
+            logger.debug("Obteniendo informacion de cuenta...")
             account_info = self.mt5.get_account_info()
             logger.debug(f"Account info: {account_info}")
             
             if not account_info:
-                logger.error("No se pudo obtener información de la cuenta")
+                logger.error("No se pudo obtener informacion de la cuenta")
                 return False
             
             initial_balance = account_info.get('balance', 0)
             
             if initial_balance <= 0:
-                logger.error("Balance inválido o cuenta vacía")
+                logger.error("Balance invalido o cuenta vacia")
                 return False
             
             logger.info(f"Balance: ${initial_balance:.2f}")
@@ -134,31 +134,31 @@ class TradingBot:
                 max_position_size=self.config.get("max_position_size", 0.5)
             )
             
-            # Obtener información del símbolo
-            logger.debug(f"Obteniendo información del símbolo {self.config['symbol']}...")
+            # Obtener informacion del simbolo
+            logger.debug(f"Obteniendo informacion del simbolo {self.config['symbol']}...")
             symbol_info = self.mt5.get_symbol_info(self.config["symbol"])
             logger.debug(f"Symbol info: {symbol_info}")
             
             if not symbol_info:
-                logger.error(f"No se pudo obtener información del símbolo {self.config['symbol']}")
+                logger.error(f"No se pudo obtener informacion del simbolo {self.config['symbol']}")
                 return False
             
-            logger.info(f"Símbolo: {symbol_info.get('symbol', 'N/A')}")
+            logger.info(f"Simbolo: {symbol_info.get('symbol', 'N/A')}")
             logger.info(f"Bid: {symbol_info.get('bid', 'N/A'):.5f}")
             logger.info(f"Ask: {symbol_info.get('ask', 'N/A'):.5f}")
             logger.info(f"Spread: {symbol_info.get('spread', 'N/A')} pips")
             
-            # Validar parámetros de riesgo
+            # Validar parametros de riesgo
             if not self.risk_manager.check_risk_parameters(
                 self.config["stop_loss_pips"],
                 self.config["take_profit_pips"]
             ):
-                logger.warning("⚠️ Parámetros de riesgo inválidos o subóptimos")
+                logger.warning("Parametros de riesgo invalidos o suboptimos")
             
             logger.info(f"Trading habilitado: {self.config['trading_enabled']}")
             
             if not self.config["trading_enabled"]:
-                logger.warning("⚠️ MODO DEMO - Trading deshabilitado en config.json")
+                logger.warning("MODO DEMO - Trading deshabilitado en config.json")
             
             return True
             
@@ -173,7 +173,7 @@ class TradingBot:
         Ejecutar backtesting de la estrategia
         
         Args:
-            bars: Cantidad de barras históricas para backtestear
+            bars: Cantidad de barras historicas para backtestear
             
         Returns:
             dict: Resultados del backtest
@@ -182,7 +182,7 @@ class TradingBot:
         logger.info("EJECUTANDO BACKTESTING")
         logger.info("=" * 50)
         
-        # Obtener datos históricos
+        # Obtener datos historicos
         rates = self.mt5.get_rates(
             self.config["symbol"],
             self.config["timeframe"],
@@ -190,24 +190,24 @@ class TradingBot:
         )
         
         if not rates or len(rates) == 0:
-            logger.error("No se pudieron obtener datos históricos")
+            logger.error("No se pudieron obtener datos historicos")
             return {}
         
         # Extraer precios de cierre
         prices = np.array([rate[4] for rate in rates])  # close price
-        logger.info(f"Datos históricos: {len(prices)} barras cargadas")
+        logger.info(f"Datos historicos: {len(prices)} barras cargadas")
         
-        # Función wrapper para la estrategia
+        # Funcion wrapper para la estrategia
         def strategy_func(price_array):
-            rsi, signal = self.strategy.analyze(price_array)
-            return signal
+            rsi, trade_signal = self.strategy.analyze(price_array)
+            return trade_signal
         
-        # Calcular lot_size dinámico usando Risk Manager
+        # Calcular lot_size dinamico usando Risk Manager
         dynamic_lot_size = self.risk_manager.calculate_lot_size(
             self.config["stop_loss_pips"]
         )
         
-        logger.info(f"Lot size dinámico calculado: {dynamic_lot_size:.2f}")
+        logger.info(f"Lot size dinamico calculado: {dynamic_lot_size:.2f}")
         
         # Ejecutar backtest
         results = self.backtest_engine.backtest(
@@ -240,7 +240,7 @@ class TradingBot:
 
     def check_signal(self) -> str:
         """
-        Verificar señal de trading
+        Verificar senal de trading
         
         Returns:
             str: 'BUY', 'SELL' o None
@@ -254,41 +254,41 @@ class TradingBot:
             )
             
             if not rates or len(rates) < 2:
-                logger.warning("Datos insuficientes para análisis")
+                logger.warning("Datos insuficientes para analisis")
                 return None
             
             # Extraer precios
             prices = np.array([rate[4] for rate in rates])
             
             # Analizar
-            rsi, signal = self.strategy.analyze(prices)
+            rsi, trade_signal = self.strategy.analyze(prices)
             
             if rsi is not None:
                 logger.debug(f"RSI: {rsi:.2f}")
             
-            return signal
+            return trade_signal
             
         except Exception as e:
-            logger.error(f"Error al verificar señal: {str(e)}")
+            logger.error(f"Error al verificar senal: {str(e)}")
             return None
 
-    def execute_trade(self, signal: str) -> bool:
+    def execute_trade(self, trade_signal: str) -> bool:
         """
-        Ejecutar trade basado en señal con gestión de riesgo
+        Ejecutar trade basado en senal con gestion de riesgo
         
         Args:
-            signal: 'BUY' o 'SELL'
+            trade_signal: 'BUY' o 'SELL'
             
         Returns:
-            bool: True si se ejecutó la orden
+            bool: True si se ejecuto la orden
         """
-        if not signal or not self.config["trading_enabled"]:
+        if not trade_signal or not self.config["trading_enabled"]:
             return False
         
         try:
-            # Verificar si debe detener trading por límites de riesgo
+            # Verificar si debe detener trading por limites de riesgo
             if self.risk_manager.should_stop_trading():
-                logger.error("🛑 Trading detenido por límites de riesgo")
+                logger.error("Trading detenido por limites de riesgo")
                 self.running = False
                 return False
             
@@ -303,14 +303,14 @@ class TradingBot:
             # Verificar posiciones abiertas
             positions = self.order_manager.get_open_positions()
             if len(positions) >= self.config["max_positions"]:
-                logger.warning(f"Máximo de posiciones alcanzado ({self.config['max_positions']})")
+                logger.warning(f"Maximo de posiciones alcanzado ({self.config['max_positions']})")
                 return False
             
-            # Calcular lot_size dinámico con Risk Manager
+            # Calcular lot_size dinamico con Risk Manager
             account_info = self.mt5.get_account_info()
             self.risk_manager.update_balance(account_info.get('balance', 0))
             
-            # Calcular escala de posición basada en ganancias/pérdidas
+            # Calcular escala de posicion basada en ganancias/perdidas
             current_profit = account_info.get('profit', 0)
             scale_factor = self.risk_manager.calculate_position_size_scaling(current_profit)
             
@@ -324,11 +324,11 @@ class TradingBot:
             self.order_manager.lot_size = dynamic_lot_size
             
             # Enviar orden
-            ticket = self.order_manager.send_order(signal, current_price)
+            ticket = self.order_manager.send_order(trade_signal, current_price)
             
             if ticket:
                 self.trades_today += 1
-                logger.info(f"✅ Trade ejecutado - Señal: {signal}, Ticket: {ticket}")
+                logger.info(f"Trade ejecutado - Senal: {trade_signal}, Ticket: {ticket}")
                 return True
             
             return False
@@ -338,7 +338,7 @@ class TradingBot:
             return False
 
     def print_status(self):
-        """Mostrar estado del bot y mercado con información de riesgo"""
+        """Mostrar estado del bot y mercado con informacion de riesgo"""
         try:
             account_info = self.mt5.get_account_info()
             positions = self.order_manager.get_open_positions()
@@ -374,13 +374,13 @@ class TradingBot:
         Args:
             backtest_first: Si True, ejecuta backtest antes de trading real
         """
-        # Manejo de señales de interrupción
+        # Manejo de seniales de interrupcion
         def signal_handler(sig, frame):
-            logger.info("\n⚠️ Señal de interrupción recibida. Deteniendo bot...")
+            logger.info("\nSenal de interrupcion recibida. Deteniendo bot...")
             self.running = False
 
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        signal_module.signal(signal_module.SIGINT, signal_handler)
+        signal_module.signal(signal_module.SIGTERM, signal_handler)
         
         # Inicializar
         if not self.initialize():
@@ -393,10 +393,10 @@ class TradingBot:
             
             # Validar resultados del backtest
             if backtest_results.get('win_rate', 0) < 45:
-                logger.warning("⚠️ Win rate muy bajo en backtest. Considera ajustar parámetros.")
+                logger.warning("Win rate muy bajo en backtest. Considera ajustar parametros.")
         
         self.running = True
-        logger.info(f"🚀 Bot iniciado - Modo: {'REAL' if self.config['trading_enabled'] else 'DEMO'}")
+        logger.info(f"Bot iniciado - Modo: {'REAL' if self.config['trading_enabled'] else 'DEMO'}")
         
         # Loop principal
         while self.running:
@@ -404,12 +404,12 @@ class TradingBot:
                 # Mostrar estado
                 self.print_status()
                 
-                # Verificar señal
-                signal = self.check_signal()
+                # Verificar senal
+                trade_signal = self.check_signal()
                 
-                if signal:
-                    logger.info(f"📊 Señal detectada: {signal}")
-                    self.execute_trade(signal)
+                if trade_signal:
+                    logger.info(f"Senal detectada: {trade_signal}")
+                    self.execute_trade(trade_signal)
                 
                 # Esperar antes del siguiente ciclo
                 wait_time = self.config["timeframe"] * 60  # Convertir a segundos
@@ -417,31 +417,31 @@ class TradingBot:
                 time.sleep(wait_time)
                 
             except KeyboardInterrupt:
-                logger.info("\n⚠️ Interrupción por usuario")
+                logger.info("\nInterrupcion por usuario")
                 break
             except Exception as e:
                 logger.error(f"Error en loop principal: {str(e)}")
                 time.sleep(60)
         
-        # Cerrar conexión
+        # Cerrar conexion
         self.mt5.disconnect()
-        logger.info("🛑 Bot detenido")
+        logger.info("Bot detenido")
 
 
 def main():
-    """Función principal"""
+    """Funcion principal"""
     logger.info("=" * 50)
     logger.info("TRADING BOT RSI - LiteFinance MetaTrader 5")
     logger.info("=" * 50)
-    logger.info("⚠️ DISCLAIMER: Este bot opera con dinero real.")
-    logger.info("⚠️ Úsalo bajo tu propio riesgo.")
+    logger.info("DISCLAIMER: Este bot opera con dinero real.")
+    logger.info("Usalo bajo tu propio riesgo.")
     logger.info("=" * 50)
     
     # Crear bot
     bot = TradingBot("config.json")
     
     # Ejecutar
-    # Cambiar backtest_first=False si solo quieres trading sin validación
+    # Cambiar backtest_first=False si solo quieres trading sin validacion
     bot.run(backtest_first=True)
 
 
