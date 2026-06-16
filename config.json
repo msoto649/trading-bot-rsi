@@ -1,0 +1,15 @@
+{
+  "account_number": "YOUR_ACCOUNT_NUMBER",
+  "password": "YOUR_PASSWORD",
+  "server": "XMGlobal-MT5",
+  "symbol": "EU50",
+  "timeframe": 15,
+  "rsi_period": 14,
+  "rsi_overbought": 70,
+  "rsi_oversold": 30,
+  "lot_size": 0.1,
+  "stop_loss_pips": 50,
+  "take_profit_pips": 100,
+  "max_positions": 1,
+  "trading_enabled": false
+}
